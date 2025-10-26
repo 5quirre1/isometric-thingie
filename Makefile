@@ -15,6 +15,9 @@ $(EXEC): $(OBJ)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+run: $(EXEC)
+	./$(EXEC)
+
 clean:
 	rm -f $(OBJ) $(EXEC)
 .PHONY: all clean
