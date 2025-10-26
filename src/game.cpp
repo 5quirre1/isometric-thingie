@@ -21,9 +21,10 @@ void run_game()
     ObjectManager objectManager; //  object
 
 
-    // all the obkects
+    // all the obkects ALSO it's like layers, put them in the orer and stuf fyk
     objectManager.AddObject(0, 0, "resources/bed.png");
     objectManager.AddObject(1, 0, "resources/desk.png", {20, 15});
+    objectManager.AddObject(1, 0, "resources/plant.png", {35, -13});
     objectManager.AddObject(1, 0, "resources/chair.png", {0, 15});
 
     /////////// main loop ///////////
