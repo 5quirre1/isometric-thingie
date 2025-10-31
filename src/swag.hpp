@@ -49,7 +49,8 @@ public:
                      Color &groundColor1, Color &groundColor2,
                      Color &wallColor, Color &wallShade,
                      std::vector<SpriteData> &sprites,
-                     std::vector<ObjectData> &objects)
+                     std::vector<ObjectData> &objects,
+                     Texture2D &skyboxTexture)
     {
 
         /////////// read ///////////
@@ -75,6 +76,24 @@ public:
             groundColor2 = fixColors(cfg.value("groundColor2", "#bfa078"));
             wallColor = fixColors(cfg.value("wallColor", "#d2b48c"));
             wallShade = fixColors(cfg.value("wallShade", "#977b56"));
+
+            /////////// load skybox ///////////
+            if (j.contains("skybox") && !j["skybox"].empty())
+            {
+                std::string skyboxBase64 = j["skybox"];
+                if (!skyboxBase64.empty())
+                {
+                    std::vector<unsigned char> data;
+                    DecodeBase64Image(skyboxBase64, data);
+                    Image img = LoadImageFromMemory(".png", data.data(), data.size());
+                    skyboxTexture = LoadTextureFromImage(img);
+                    UnloadImage(img);
+                }
+            }
+            else
+            {
+                std::cout << "No skybox found in JSON\n";
+            }
 
             /////////// load all the sprites ///////////
             sprites.reserve(j["sprites"].size());
@@ -127,6 +146,10 @@ private:
     {
         std::string str = base64str;
         if (str.rfind("data:image/png;base64,", 0) == 0)
+            str = str.substr(22);
+        else if (str.rfind("data:image/jpeg;base64,", 0) == 0)
+            str = str.substr(23);
+        else if (str.rfind("data:image/jpg;base64,", 0) == 0)
             str = str.substr(22);
         std::string decoded = DecodeBase64(str);
         out.assign(decoded.begin(), decoded.end());
