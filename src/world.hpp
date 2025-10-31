@@ -32,12 +32,21 @@ public:
     // swag
     bool LoadFromSwag(const std::string &path)
     {
-        return SwagLoader::Load(path,
+        Texture2D skyboxTexture{};
+        bool success = SwagLoader::Load(path,
                                 mapWidth, mapHeight,
                                 tileWidth, tileHeight, wallHeight,
                                 groundColor1, groundColor2,
                                 wallColor, wallShade,
-                                sprites, objects);
+                                sprites, objects, skyboxTexture);
+        
+        // skybox zet
+        if (success && skyboxTexture.id > 0)
+        {
+            objectManager.SetSkybox(skyboxTexture);
+        }
+        
+        return success;
     }
 
     // draw the world
