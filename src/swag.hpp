@@ -32,10 +32,11 @@ struct SpriteData
 ///////////// obkect /////////////
 struct ObjectData
 {
-    int gridX;
-    int gridY;
+    float gridX;
+    float gridY;
     std::string spriteId;
     Vector2 offset{0, 0};
+    int spriteLayer = 0;
 };
 
 ///////////// swag loader. so. friggin. swag. /////////////
@@ -86,7 +87,7 @@ public:
                 if (!sp.base64Src.empty())
                 {
                     std::vector<unsigned char> data;
-                    DecodeBase64Image(sp.base64Src, data); // decode the image,.,
+                    DecodeBase64Image(sp.base64Src, data);
                     Image img = LoadImageFromMemory(".png", data.data(), data.size());
                     sp.texture = LoadTextureFromImage(img);
                     UnloadImage(img);
@@ -99,14 +100,15 @@ public:
             for (auto &o : j["objects"])
             {
                 ObjectData obj;
-                obj.gridX = o.value("gridX", 0);
-                obj.gridY = o.value("gridY", 0);
+                obj.gridX = o.value("gridX", 0.0f);
+                obj.gridY = o.value("gridY", 0.0f);
                 obj.spriteId = o.value("spriteId", "");
                 if (o.contains("offset"))
                 {
                     obj.offset.x = o["offset"].value("x", 0);
                     obj.offset.y = o["offset"].value("y", 0);
                 }
+                obj.spriteLayer = o.value("spriteLayer", 0);
                 objects.push_back(obj);
             }
 
