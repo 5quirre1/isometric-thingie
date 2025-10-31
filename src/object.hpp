@@ -9,7 +9,7 @@
 #include <thread>
 
 // convert gri to isometric stuff
-inline Vector2 GridToIso(int x, int y, int tileWidth, int tileHeight)
+inline Vector2 GridToIso(float x, float y, int tileWidth, int tileHeight)
 {
     Vector2 pos;
     pos.x = (x - y) * tileWidth / 2.0f;
@@ -21,29 +21,35 @@ inline Vector2 GridToIso(int x, int y, int tileWidth, int tileHeight)
 class IsometricObject
 {
 public:
-    int gridX;
-    int gridY;
+    float gridX;
+    float gridY;
     Texture2D texture;
     Vector2 offset;
     bool loaded;
+    int spriteLayer;
+    float heightTiles;
 
-    IsometricObject() : gridX(0), gridY(0), offset({0, 0}), loaded(false) {}
+    IsometricObject() : gridX(0), gridY(0), offset({0, 0}), loaded(false), spriteLayer(0), heightTiles(0) {}
 
-    IsometricObject(int x, int y, const char *texturePath, Vector2 customOffset = {0, 0})
-        : gridX(x), gridY(y), offset(customOffset), loaded(false)
+    IsometricObject(float x, float y, const char *texturePath, Vector2 customOffset = {0, 0})
+        : gridX(x), gridY(y), offset(customOffset), loaded(false), spriteLayer(0), heightTiles(0)
     {
         texture = LoadTexture(texturePath);
         if (texture.id > 0)
             loaded = true;
     }
     // pos
-    void SetPosition(int x, int y)
+    void SetPosition(float x, float y)
     {
         gridX = x;
         gridY = y;
     }
     // offset
     void SetOffset(Vector2 newOffset) { offset = newOffset; }
+    // layer
+    void SetLayer(int layer) { spriteLayer = layer; }
+    // height
+    void SetHeightTiles(float height) { heightTiles = height; }
     // draw
     void Draw(int screenCenterX, int screenCenterY, int tileWidth, int tileHeight)
     {
@@ -79,13 +85,13 @@ private:
 
 public:
     // add objects tuff
-    IsometricObject &AddObject(int gridX, int gridY, const char *texturePath, Vector2 offset = {0, 0})
+    IsometricObject &AddObject(float gridX, float gridY, const char *texturePath, Vector2 offset = {0, 0})
     {
         objects.emplace_back(gridX, gridY, texturePath, offset);
         return objects.back();
     }
 
-    IsometricObject &AddObject(int gridX, int gridY, Texture2D texture, Vector2 offset = {0, 0})
+    IsometricObject &AddObject(float gridX, float gridY, Texture2D texture, Vector2 offset = {0, 0})
     {
         objects.emplace_back();
         IsometricObject &obj = objects.back();
@@ -94,6 +100,8 @@ public:
         obj.offset = offset;
         obj.texture = texture;
         obj.loaded = true;
+        obj.spriteLayer = 0;
+        obj.heightTiles = 0;
         return obj;
     }
 
@@ -143,7 +151,12 @@ public:
     {
         std::vector<std::reference_wrapper<IsometricObject>> sorted(objects.begin(), objects.end());
         std::sort(sorted.begin(), sorted.end(), [](const IsometricObject &a, const IsometricObject &b)
-                  { return (a.gridX + a.gridY) < (b.gridX + b.gridY); });
+                  {
+                      if (a.spriteLayer != b.spriteLayer)
+                          return a.spriteLayer < b.spriteLayer;
+                      float depthA = a.gridX + a.gridY + a.heightTiles;
+                      float depthB = b.gridX + b.gridY + b.heightTiles;
+                      return depthA < depthB; });
 
         for (auto &obj : sorted)
             obj.get().Draw(screenCenterX, screenCenterY, tileWidth, tileHeight);
