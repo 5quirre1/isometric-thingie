@@ -1,10 +1,12 @@
-//iit's 4:03 am i'm super tired sorry for shitty commenting
 #ifndef OBJECT_HPP
 #define OBJECT_HPP
 
 #include "raylib.h"
 #include <vector>
 #include <string>
+#include <algorithm>
+#include <functional>
+#include <thread>
 
 // convert gri to isometric stuff
 inline Vector2 GridToIso(int x, int y, int tileWidth, int tileHeight)
@@ -24,19 +26,16 @@ public:
     Texture2D texture;
     Vector2 offset;
     bool loaded;
-    
+
     IsometricObject() : gridX(0), gridY(0), offset({0, 0}), loaded(false) {}
-    
-    IsometricObject(int x, int y, const char* texturePath, Vector2 customOffset = {0, 0})
+
+    IsometricObject(int x, int y, const char *texturePath, Vector2 customOffset = {0, 0})
         : gridX(x), gridY(y), offset(customOffset), loaded(false)
     {
         texture = LoadTexture(texturePath);
         if (texture.id > 0)
-        {
             loaded = true;
-        }
     }
-    
     // pos
     void SetPosition(int x, int y)
     {
@@ -44,25 +43,20 @@ public:
         gridY = y;
     }
     // offset
-    void SetOffset(Vector2 newOffset)
-    {
-        offset = newOffset;
-    }
-    
+    void SetOffset(Vector2 newOffset) { offset = newOffset; }
     // draw
     void Draw(int screenCenterX, int screenCenterY, int tileWidth, int tileHeight)
     {
-        if (!loaded) return;
-        
+        if (!loaded)
+            return;
         Vector2 pos = GridToIso(gridX, gridY, tileWidth, tileHeight);
         pos.x += screenCenterX;
         pos.y += screenCenterY;
         float drawX = pos.x - texture.width / 2.0f + offset.x;
         float drawY = pos.y - texture.height + tileHeight + offset.y;
-        
         DrawTexture(texture, drawX, drawY, WHITE);
     }
-    //unload
+    // unload
     void Unload()
     {
         if (loaded)
@@ -71,81 +65,113 @@ public:
             loaded = false;
         }
     }
-    
-    ~IsometricObject()
-    {
-        //nothing cause auto unloa
-    }
+
+    ~IsometricObject() { /* nothing cause auto unload */ }
 };
 
 // obect manager
 class ObjectManager
 {
 private:
-    std::vector<IsometricObject*> objects;
-    
+    std::vector<IsometricObject> objects;
+    Texture2D skybox;
+    bool skyboxLoaded = false;
+
 public:
-    IsometricObject* AddObject(int gridX, int gridY, const char* texturePath, Vector2 offset = {0, 0})
+    // add objects tuff
+    IsometricObject &AddObject(int gridX, int gridY, const char *texturePath, Vector2 offset = {0, 0})
     {
-        IsometricObject* obj = new IsometricObject(gridX, gridY, texturePath, offset);
-        objects.push_back(obj);
+        objects.emplace_back(gridX, gridY, texturePath, offset);
+        return objects.back();
+    }
+
+    IsometricObject &AddObject(int gridX, int gridY, Texture2D texture, Vector2 offset = {0, 0})
+    {
+        objects.emplace_back();
+        IsometricObject &obj = objects.back();
+        obj.gridX = gridX;
+        obj.gridY = gridY;
+        obj.offset = offset;
+        obj.texture = texture;
+        obj.loaded = true;
         return obj;
     }
+
     // remove
-    void RemoveObject(IsometricObject* obj)
+    void RemoveObject(IsometricObject &obj)
     {
-        for (size_t i = 0; i < objects.size(); i++)
+        auto it = std::find_if(objects.begin(), objects.end(), [&](const IsometricObject &o)
+                               { return &o == &obj; });
+        if (it != objects.end())
         {
-            if (objects[i] == obj)
-            {
-                objects[i]->Unload();
-                delete objects[i];
-                objects.erase(objects.begin() + i);
-                break;
-            }
+            it->Unload();
+            objects.erase(it);
         }
     }
+
+    // skybox
+    void SetSkybox(const char *texturePath)
+    {
+        if (skyboxLoaded)
+            UnloadTexture(skybox);
+        skybox = LoadTexture(texturePath);
+        skyboxLoaded = (skybox.id > 0);
+    }
+
+    // actually draw
+    void DrawSkybox(int screenWidth, int screenHeight)
+    {
+        if (!skyboxLoaded)
+            return;
+
+        float scale = 2.5f;
+        float w = screenWidth * scale;
+        float h = screenHeight * scale;
+        float offsetX = (screenWidth - w) / 2.0f;
+        float offsetY = (screenHeight - h) / 2.0f - screenHeight * 0.15f;
+
+        DrawTexturePro(
+            skybox,
+            {0.0f, 0.0f, (float)skybox.width, (float)skybox.height},
+            {offsetX, offsetY, w, h},
+            {0.0f, 0.0f},
+            0.0f, WHITE);
+    }
+
     // draw all
     void DrawAll(int screenCenterX, int screenCenterY, int tileWidth, int tileHeight)
     {
-        std::vector<IsometricObject*> sorted = objects;
-        // blah blah vlah smarty pants sort
-        for (size_t i = 0; i < sorted.size(); i++)
-        {
-            for (size_t j = i + 1; j < sorted.size(); j++)
-            {
-                int sum1 = sorted[i]->gridX + sorted[i]->gridY;
-                int sum2 = sorted[j]->gridX + sorted[j]->gridY;
-                if (sum1 > sum2)
-                {
-                    IsometricObject* temp = sorted[i];
-                    sorted[i] = sorted[j];
-                    sorted[j] = temp;
-                }
-            }
-        }
-        
-        // draw
-        for (auto obj : sorted)
-        {
-            obj->Draw(screenCenterX, screenCenterY, tileWidth, tileHeight);
-        }
+        std::vector<std::reference_wrapper<IsometricObject>> sorted(objects.begin(), objects.end());
+        std::sort(sorted.begin(), sorted.end(), [](const IsometricObject &a, const IsometricObject &b)
+                  { return (a.gridX + a.gridY) < (b.gridX + b.gridY); });
+
+        for (auto &obj : sorted)
+            obj.get().Draw(screenCenterX, screenCenterY, tileWidth, tileHeight);
     }
-    //clear
+
+    // clear
     void Clear()
     {
-        for (auto obj : objects)
+        std::vector<std::thread> threads;
+        for (auto &obj : objects)
         {
-            obj->Unload();
-            delete obj;
+            threads.emplace_back([&obj]()
+                                 { obj.Unload(); });
         }
+        for (auto &t : threads)
+            if (t.joinable())
+                t.join();
+
         objects.clear();
+
+        if (skyboxLoaded)
+        {
+            UnloadTexture(skybox);
+            skyboxLoaded = false;
+        }
     }
-    
-    ~ObjectManager()
-    {
-        Clear();
-    }
+
+    ~ObjectManager() { Clear(); }
 };
 
 #endif
