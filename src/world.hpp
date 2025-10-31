@@ -77,12 +77,14 @@ public:
             auto it = spriteMap.find(obj.spriteId);
             if (it != spriteMap.end())
             {
-                objectManager.AddObject(obj.gridX, obj.gridY, it->second, obj.offset);
+                IsometricObject &addedObj = objectManager.AddObject(obj.gridX, obj.gridY, it->second, obj.offset);
+                addedObj.SetLayer(obj.spriteLayer);
             }
         }
 
         objectManager.DrawAll(screenWidth / 2, yOffset - 3, tileWidth, tileHeight);
     }
+
     // clear
     void Clear()
     {
