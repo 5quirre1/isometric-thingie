@@ -117,12 +117,21 @@ public:
         }
     }
 
-    // skybox
+    // set skybox
     void SetSkybox(const char *texturePath)
     {
         if (skyboxLoaded)
             UnloadTexture(skybox);
         skybox = LoadTexture(texturePath);
+        skyboxLoaded = (skybox.id > 0);
+    }
+
+    // skybox
+    void SetSkybox(Texture2D texture)
+    {
+        if (skyboxLoaded)
+            UnloadTexture(skybox);
+        skybox = texture;
         skyboxLoaded = (skybox.id > 0);
     }
 
