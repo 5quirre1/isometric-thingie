@@ -29,29 +29,54 @@ public:
 
     ObjectManager objectManager;
 
+    bool worldReady = false; // new flag to MAYABE make more optimized
+
     // swag
     bool LoadFromSwag(const std::string &path)
     {
         Texture2D skyboxTexture{};
         bool success = SwagLoader::Load(path,
-                                mapWidth, mapHeight,
-                                tileWidth, tileHeight, wallHeight,
-                                groundColor1, groundColor2,
-                                wallColor, wallShade,
-                                sprites, objects, skyboxTexture);
-        
+                                        mapWidth, mapHeight,
+                                        tileWidth, tileHeight, wallHeight,
+                                        groundColor1, groundColor2,
+                                        wallColor, wallShade,
+                                        sprites, objects, skyboxTexture);
+
+        if (!success)
+            return false;
+
         // skybox zet
-        if (success && skyboxTexture.id > 0)
+        if (skyboxTexture.id > 0)
         {
             objectManager.SetSkybox(skyboxTexture);
         }
-        
-        return success;
+
+        // make sprite map
+        std::unordered_map<std::string, Texture2D> spriteMap;
+        for (auto &s : sprites)
+            spriteMap[s.id] = s.texture;
+
+        // make all objects once
+        for (auto &obj : objects)
+        {
+            auto it = spriteMap.find(obj.spriteId);
+            if (it != spriteMap.end())
+            {
+                IsometricObject &addedObj = objectManager.AddObject(obj.gridX, obj.gridY, it->second, obj.offset);
+                addedObj.SetLayer(obj.spriteLayer);
+            }
+        }
+
+        worldReady = true;
+        return true;
     }
 
     // draw the world
     void DrawWorld(int screenWidth, float yOffset)
     {
+        if (!worldReady)
+            return;
+
         for (int y = 0; y < mapHeight; y++)
         {
             for (int x = 0; x < mapWidth; x++)
@@ -77,20 +102,6 @@ public:
             }
         }
 
-        std::unordered_map<std::string, Texture2D> spriteMap;
-        for (auto &s : sprites)
-            spriteMap[s.id] = s.texture;
-
-        for (auto &obj : objects)
-        {
-            auto it = spriteMap.find(obj.spriteId);
-            if (it != spriteMap.end())
-            {
-                IsometricObject &addedObj = objectManager.AddObject(obj.gridX, obj.gridY, it->second, obj.offset);
-                addedObj.SetLayer(obj.spriteLayer);
-            }
-        }
-
         objectManager.DrawAll(screenWidth / 2, yOffset - 3, tileWidth, tileHeight);
     }
 
@@ -101,11 +112,16 @@ public:
         for (auto &s : sprites)
         {
             if (s.texture.id > 0)
+            {
                 UnloadTexture(s.texture);
+                s.texture.id = 0;
+            }
         }
         sprites.clear();
         objects.clear();
+        worldReady = false;
     }
+
     // remove wold
     ~World()
     {
