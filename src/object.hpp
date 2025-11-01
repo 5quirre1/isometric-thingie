@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <functional>
 #include <thread>
+#include <unordered_set>
 
 // convert gri to isometric stuff
 inline Vector2 GridToIso(float x, float y, int tileWidth, int tileHeight)
@@ -65,9 +66,10 @@ public:
     // unload
     void Unload()
     {
-        if (loaded)
+        if (loaded && texture.id != 0)
         {
             UnloadTexture(texture);
+            texture.id = 0;
             loaded = false;
         }
     }
@@ -174,18 +176,7 @@ public:
     // clear
     void Clear()
     {
-        std::vector<std::thread> threads;
-        for (auto &obj : objects)
-        {
-            threads.emplace_back([&obj]()
-                                 { obj.Unload(); });
-        }
-        for (auto &t : threads)
-            if (t.joinable())
-                t.join();
-
         objects.clear();
-
         if (skyboxLoaded)
         {
             UnloadTexture(skybox);
