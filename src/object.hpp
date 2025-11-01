@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <functional>
 #include <thread>
-#include <unordered_set>
+#include <unordered_map>
 
 // convert gri to isometric stuff
 inline Vector2 GridToIso(float x, float y, int tileWidth, int tileHeight)
@@ -84,13 +84,23 @@ private:
     std::vector<IsometricObject> objects;
     Texture2D skybox;
     bool skyboxLoaded = false;
+    std::unordered_map<std::string, Texture2D> textureCache;
 
 public:
     // add objects tuff
     IsometricObject &AddObject(float gridX, float gridY, const char *texturePath, Vector2 offset = {0, 0})
     {
-        objects.emplace_back(gridX, gridY, texturePath, offset);
-        return objects.back();
+        Texture2D tex = LoadCachedTexture(texturePath);
+        objects.emplace_back();
+        IsometricObject &obj = objects.back();
+        obj.gridX = gridX;
+        obj.gridY = gridY;
+        obj.offset = offset;
+        obj.texture = tex;
+        obj.loaded = true;
+        obj.spriteLayer = 0;
+        obj.heightTiles = 0;
+        return obj;
     }
 
     IsometricObject &AddObject(float gridX, float gridY, Texture2D texture, Vector2 offset = {0, 0})
@@ -176,7 +186,31 @@ public:
     // clear
     void Clear()
     {
+        std::vector<std::thread> workers;
+        workers.reserve(objects.size());
+
+        for (auto &obj : objects)
+        {
+            if (obj.loaded && obj.texture.id != 0)
+            {
+                workers.emplace_back([tex = obj.texture]() mutable
+                                     { UnloadTexture(tex); });
+                obj.loaded = false;
+                obj.texture.id = 0;
+            }
+        }
+
+        for (auto &t : workers)
+            if (t.joinable())
+                t.join();
+
         objects.clear();
+
+        for (auto &[_, tex] : textureCache)
+            if (tex.id != 0)
+                UnloadTexture(tex);
+        textureCache.clear();
+
         if (skyboxLoaded)
         {
             UnloadTexture(skybox);
@@ -185,6 +219,19 @@ public:
     }
 
     ~ObjectManager() { Clear(); }
+
+private:
+    // load cache stuff
+    Texture2D LoadCachedTexture(const std::string &path)
+    {
+        auto it = textureCache.find(path);
+        if (it != textureCache.end())
+            return it->second;
+
+        Texture2D tex = LoadTexture(path.c_str());
+        textureCache[path] = tex;
+        return tex;
+    }
 };
 
 #endif
