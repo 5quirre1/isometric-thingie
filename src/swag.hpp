@@ -89,10 +89,9 @@ public:
                     skyboxTexture = LoadTextureFromImage(img);
                     UnloadImage(img);
                 }
-            }
-            else
+            } else
             {
-                std::cout << "No skybox found in JSON\n";
+                std::cout << "no skybox found\n";
             }
 
             /////////// load all the sprites ///////////
