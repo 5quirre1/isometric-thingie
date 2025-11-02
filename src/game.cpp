@@ -19,7 +19,7 @@ void run_game()
     while (!WindowShouldClose())
     {
         BeginDrawing();
-            ClearBackground(fixColors("#c4ccd1ff"));
+            ClearBackground(fixColors("#2b2b2b"));
             world.objectManager.DrawSkybox(screenWidth, screenHeight);
             world.DrawWorld(screenWidth, yOffset);
         EndDrawing();
@@ -27,3 +27,4 @@ void run_game()
 
     world.Clear();
 }
+
